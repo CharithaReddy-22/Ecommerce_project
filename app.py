@@ -21,9 +21,16 @@ def get_products():
 @app.route("/create-order", methods=["POST"])
 def create_order():
     data = request.json
-    customer_id = data["customer_id"]
-    product_id = data["product_id"]
-    quantity = data["quantity"]
+
+    if not data:
+        return {"error": "No data provided"}, 400
+
+    customer_id = data.get("customer_id")
+    product_id = data.get("product_id")
+    quantity = data.get("quantity")
+
+    if not customer_id or not product_id or not quantity:
+        return {"error": "Missing required fields"}, 400
 
     cursor.execute(
         """
@@ -36,6 +43,5 @@ def create_order():
     conn.commit()
 
     return {"message": "Order created successfully"}
-
 if __name__ == "__main__":
     app.run(debug=True)
