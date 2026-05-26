@@ -8,5 +8,8 @@ app.register_blueprint(products_bp)
 @app.route("/")
 def home():
     return "Ecommerce API Running"
+import os
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
