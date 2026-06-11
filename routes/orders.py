@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify, request
 from db import conn, cursor
-
+from routes.auth import token_required
 orders_bp = Blueprint("orders", __name__)
 @orders_bp.route("/orders")
-def get_orders():
+@token_required
+def get_orders(current_user):
 
     cursor.execute("""
         SELECT
@@ -38,7 +39,8 @@ def get_orders():
 
     return jsonify(orders)
 @orders_bp.route("/create-order", methods=["POST"])
-def create_order():
+@token_required
+def create_order(current_user):
     data = request.json
     customer_id = data["customer_id"]
     product_id = data["product_id"]
@@ -72,7 +74,8 @@ def create_order():
     conn.commit()
     return {"message": "Order created successfully"}
 @orders_bp.route("/update-order/<int:order_id>", methods=["PUT"])
-def update_order(order_id):
+@token_required
+def update_order(current_user,order_id):
 
     data = request.json
 
@@ -93,7 +96,8 @@ def update_order(order_id):
         "message": "Order updated successfully"
     }
 @orders_bp.route("/delete-order/<int:order_id>", methods=["DELETE"])
-def delete_order(order_id):
+@token_required
+def delete_order(current_user,order_id):
 
     # Delete payments
     cursor.execute(
