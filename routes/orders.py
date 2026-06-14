@@ -7,19 +7,20 @@ orders_bp = Blueprint("orders", __name__)
 def get_orders(current_user):
 
     cursor.execute("""
-        SELECT
-            orders.order_id,
-            customers.email,
-            products.product_name,
-            orders.quantity,
-            orders.order_status,
-            orders.created_at
-        FROM orders
-        JOIN customers
-            ON orders.customer_id = customers.customer_id
-        JOIN products
-            ON orders.product_id = products.product_id
-    """)
+    SELECT
+        orders.order_id,
+        users.email,
+        products.product_name,
+        orders.quantity,
+        orders.order_status,
+        orders.created_at
+    FROM orders
+    JOIN users
+        ON orders.user_id = users.user_id
+    JOIN products
+        ON orders.product_id = products.product_id
+    WHERE orders.user_id = %s""",
+    (current_user["user_id"],))
     rows = cursor.fetchall()
 
     orders = []
@@ -28,7 +29,7 @@ def get_orders(current_user):
 
         order = {
             "order_id": row[0],
-            "customer_email": row[1],
+            "user_email": row[1],
             "product_name": row[2],
             "quantity": row[3],
             "status": row[4],
@@ -42,7 +43,7 @@ def get_orders(current_user):
 @token_required
 def create_order(current_user):
     data = request.json
-    customer_id = data["customer_id"]
+    user_id = current_user["user_id"]
     product_id = data["product_id"]
     quantity = data["quantity"]
     cursor.execute(
@@ -56,12 +57,12 @@ def create_order(current_user):
     if current_stock < quantity:
         return {"error": "Insufficient stock"}, 400
     cursor.execute(
-        """
-        INSERT INTO orders
-        (customer_id, product_id, quantity, order_status)
-        VALUES (%s, %s, %s, 'placed')
-        """,
-        (customer_id, product_id, quantity)
+    """
+    INSERT INTO orders
+    (user_id, product_id, quantity, order_status)
+    VALUES (%s, %s, %s, 'placed')
+    """,
+    (user_id, product_id, quantity)
     )
     cursor.execute(
         """
@@ -80,7 +81,19 @@ def update_order(current_user,order_id):
     data = request.json
 
     new_status = data["status"]
+    cursor.execute(
+    """
+    SELECT *
+    FROM orders
+    WHERE order_id = %s
+    AND user_id = %s
+    """,
+    (order_id, current_user["user_id"])
+    )
+    order = cursor.fetchone()
 
+    if order is None:
+        return {"error": "Unauthorized"}, 403
     cursor.execute(
         """
         UPDATE orders
@@ -98,7 +111,20 @@ def update_order(current_user,order_id):
 @orders_bp.route("/delete-order/<int:order_id>", methods=["DELETE"])
 @token_required
 def delete_order(current_user,order_id):
+    cursor.execute(
+    """
+    SELECT *
+    FROM orders
+    WHERE order_id = %s
+    AND user_id = %s
+    """,
+    (order_id, current_user["user_id"])
+    )
 
+    order = cursor.fetchone()
+
+    if order is None:
+        return {"error": "Unauthorized"}, 403
     # Delete payments
     cursor.execute(
         """
